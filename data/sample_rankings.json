@@ -1,0 +1,7 @@
+{
+  "rankings": [
+    {"artist": "Group A", "song": "Hit Song", "points": 12345},
+    {"artist": "Artist B", "song": "Another Hit", "points": 11200},
+    {"artist": "Singer C", "song": "Ballad", "points": 9800}
+  ]
+}

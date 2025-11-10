@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MAMA 2025 Rankings Tracker</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 2rem;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        padding: 2rem;
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 1rem;
+        font-size: 2rem;
+      }
+      .meta {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #eee;
+      }
+      .category {
+        margin-bottom: 3rem;
+      }
+      .category h2 {
+        color: #667eea;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+      }
+      th {
+        background: #f8f9fa;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #dee2e6;
+      }
+      td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #eee;
+      }
+      tr:hover {
+        background: #f8f9fa;
+      }
+      .rank {
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: #667eea;
+        width: 60px;
+      }
+      .rank-1 { color: #FFD700; }
+      .rank-2 { color: #C0C0C0; }
+      .rank-3 { color: #CD7F32; }
+      .artist {
+        font-weight: 500;
+        color: #333;
+      }
+      .changes-section {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 2px solid #eee;
+      }
+      .changes-section h2 {
+        color: #764ba2;
+        margin-bottom: 1rem;
+      }
+      .change-item {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .change-up { color: #28a745; }
+      .change-down { color: #dc3545; }
+      .no-data {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+      }
+      .refresh-btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        transition: background 0.3s;
+      }
+      .refresh-btn:hover {
+        background: #5568d3;
+      }
+      .refresh-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      .status-message {
+        display: inline-block;
+        margin-left: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+      }
+      .status-success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🏆 MAMA 2025 Rankings Tracker</h1>
+
+      {% if rankings %}
+        <div class="meta">
+          <strong>Last Updated:</strong> {{ rankings.updatedAt }}<br>
+          <strong>Fetched At:</strong> {{ rankings.fetchedAt }}<br>
+          <button onclick="refreshRankings()" class="refresh-btn" id="refreshBtn">🔄 Refresh Rankings</button>
+          <span id="statusMessage" class="status-message" style="display: none;"></span>
+        </div>
+
+        {% if rankings.groups %}
+          {% for group in rankings.groups %}
+            <div class="category">
+              <h2>{{ group.groupName }}</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Artist</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for option in group.options|sort(attribute='rank') %}
+                    <tr>
+                      <td class="rank rank-{{ option.rank }}">{{ option.rank }}</td>
+                      <td class="artist">{{ option.title }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        {% if changes %}
+          <div class="changes-section">
+            <h2>📊 Recent Ranking Changes</h2>
+            {% for change in changes %}
+              <div class="change-item">
+                <span class="{% if change.change > 0 %}change-up{% else %}change-down{% endif %}">
+                  {% if change.change > 0 %}↑{% else %}↓{% endif %}
+                </span>
+                <strong>{{ change.artist }}</strong>
+                <span>({{ change.category }})</span>
+                <span>Rank {{ change.old_rank }} → {{ change.new_rank }}</span>
+                <span style="margin-left: auto; color: #666; font-size: 0.85rem;">
+                  {{ change.detected_at }}
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+      {% else %}
+        <div class="no-data">
+          <h2>No rankings available yet</h2>
+          <p>Run <code>python3 -m src.scheduler --once</code> to fetch data.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <script>
+      function refreshRankings() {
+        const btn = document.getElementById('refreshBtn');
+        const statusMsg = document.getElementById('statusMessage');
+
+        // Disable button and show loading
+        btn.disabled = true;
+        btn.textContent = '⏳ Refreshing...';
+        statusMsg.style.display = 'none';
+
+        // Fetch new rankings
+        fetch('/refresh')
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              // Show success message
+              statusMsg.textContent = '✓ Rankings updated successfully!';
+              statusMsg.className = 'status-message status-success';
+              statusMsg.style.display = 'inline-block';
+
+              // Reload page after short delay to show new data
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            } else {
+              throw new Error(data.message || 'Failed to refresh');
+            }
+          })
+          .catch(error => {
+            // Show error message
+            statusMsg.textContent = '✗ Error: ' + error.message;
+            statusMsg.className = 'status-message status-error';
+            statusMsg.style.display = 'inline-block';
+
+            // Re-enable button
+            btn.disabled = false;
+            btn.textContent = '🔄 Refresh Rankings';
+
+            // Hide error after 5 seconds
+            setTimeout(() => {
+              statusMsg.style.display = 'none';
+            }, 5000);
+          });
+      }
+    </script>
+  </body>
+</html>
